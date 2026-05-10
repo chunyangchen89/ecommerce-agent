@@ -1,0 +1,37 @@
+[project]
+name = "ecommerce-agent"
+version = "0.1.0"
+description = "Enterprise ecommerce data agent — natural language to structured insights"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "psycopg2-binary",
+    "pymilvus",
+    "redis",
+    "openai",
+    "langgraph",
+    "langchain",
+    "langchain-core",
+    "llama-index-core",
+    "llama-index-embeddings-openai",
+    "llama-index-llms-openai",
+    "llama-index-vector-stores-milvus",
+    "python-dotenv",
+    "tqdm",
+    "faker",
+    "httpx",
+    "langchain-openai>=1.2.1",
+    "langfuse>=2.0.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
