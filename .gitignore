@@ -11,3 +11,7 @@ dist/
 CLAUDE.md
 DESIGN.md
 docs/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/

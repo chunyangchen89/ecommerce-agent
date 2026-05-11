@@ -18,6 +18,7 @@ User: "退货率最高的10个SKU，分析原因"
 
 - [Docker](https://docs.docker.com/get-docker/) + Docker Compose
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
+- [Node.js](https://nodejs.org/) 18+ (for frontend)
 - [Ollama](https://ollama.ai/) with models pulled:
   ```bash
   ollama pull bge-m3
@@ -54,7 +55,19 @@ uv run uvicorn app.main:app --reload
 
 API docs available at http://localhost:8000/docs
 
-### 5. Query
+### 5. Start frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3002
+
+### 6. Query
+
+Use the web UI at http://localhost:3002, or via curl:
 
 ```bash
 curl -X POST http://localhost:8000/query \
@@ -66,6 +79,7 @@ curl -X POST http://localhost:8000/query \
 
 | Service | Port | Purpose |
 |---|---|---|
+| Next.js Frontend | 3002 | Web UI |
 | FastAPI | 8000 | API server |
 | PostgreSQL | 5432 | Structured data warehouse |
 | Milvus | 19530 | Vector database |
@@ -147,23 +161,32 @@ Open http://localhost:3000 — view LLM traces, agent execution flows, and token
 ## Project Structure
 
 ```
-app/
-├── config.py              # Pydantic Settings (all env vars)
-├── main.py                # FastAPI entry point
-├── models/                # DW table ORM + API schemas
-├── db/                    # PostgreSQL, Milvus, Redis clients
-├── data_generator/        # DDL + simulated data + ingest
-├── embedding/             # Batch embedding pipeline (LangGraph)
-├── agent/                 # Search agent (intent router + NL2SQL + RAG)
-└── api/                   # HTTP routes
-scripts/                   # CLI entry points
+app/                        # Python backend
+├── config.py               # Pydantic Settings (all env vars)
+├── main.py                 # FastAPI entry point
+├── models/                 # DW table ORM + API schemas
+├── db/                     # PostgreSQL, Milvus, Redis clients
+├── data_generator/         # DDL + simulated data + ingest
+├── embedding/              # Batch embedding pipeline (LangGraph)
+├── agent/                  # Search agent (intent router + NL2SQL + RAG)
+└── api/                    # HTTP routes
+
+frontend/                   # Next.js frontend
+├── src/
+│   ├── app/                # Next.js App Router pages
+│   ├── components/         # UI components (layout, query, results, upload)
+│   ├── lib/                # API client, types, utilities
+│   └── hooks/              # React hooks (query, health, file upload)
+└── .env.local              # Frontend environment config
+
+scripts/                    # CLI entry points
 ```
 
 ## Tech Stack
 
 | Layer | Tool |
 |---|---|
-| Frontend | Next.js |
+| Frontend | Next.js 16 + Tailwind CSS v4 + shadcn/ui |
 | Backend API | FastAPI |
 | Agent orchestration | LangGraph |
 | RAG retrieval | LlamaIndex |
@@ -172,7 +195,7 @@ scripts/                   # CLI entry points
 | Checkpoint / cache | Redis |
 | Observability | Langfuse |
 | LLM / Embedding | Ollama (bge-m3 + qwen3:8b) |
-| Package management | uv |
+| Package management | uv (backend) + npm (frontend) |
 
 ## License
 
