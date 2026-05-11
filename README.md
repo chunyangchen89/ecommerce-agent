@@ -2,15 +2,37 @@
 
 Enterprise ecommerce data agent — query business data in natural language, get structured insights combining SQL analytics and review RAG.
 
-## How it works
+## Demo
 
-```
-User: "退货率最高的10个SKU，分析原因"
-  → Intent Router (LLM classifies: nl2sql / rag / hybrid)
-  → NL2SQL: discover tables → generate SQL → execute against PostgreSQL
-  → RAG: embed query → search Milvus → rerank results
-  → Synthesize: combine SQL data + review insights → final answer
-```
+### 1. Landing Page
+
+The agent's web UI provides a clean search interface for natural language queries and a document upload area for future embedding.
+
+![Landing Page](screenshots/01_landing_page.png)
+
+### 2. Ask a Question
+
+Enter a question in natural language. Here we ask "退货率最高的10个SKU，分析原因" (Top 10 SKUs with highest return rates, analyze reasons). The agent classifies this as a **hybrid** intent — it needs both structured SQL data and unstructured review analysis.
+
+![Ask Question](screenshots/02_ask_question_01.png)
+
+### 3. NL2SQL Results
+
+The agent discovers relevant tables, generates SQL, and executes it against PostgreSQL. The collapsible SQL section shows the generated query, and the data table displays the top 10 returned SKUs with return counts and aggregated reasons.
+
+![NL2SQL Results](screenshots/03_nl2sql_results.png)
+
+### 4. RAG Context
+
+In hybrid mode, the SKUs from the SQL results are used as metadata filters to search for relevant product info and customer reviews in Milvus. The collapsible RAG section shows retrieved documents with relevance scores.
+
+![RAG Context](screenshots/04_rag_context.png)
+
+### 5. Synthesized Answer
+
+The agent combines SQL data and RAG insights into a comprehensive analysis — covering return reason breakdowns, SKU-level root cause analysis, and actionable optimization strategies.
+
+![Synthesized Answer](screenshots/02_ask_question_02.png)
 
 ## Quick Start
 
@@ -196,6 +218,121 @@ scripts/                    # CLI entry points
 | Observability | Langfuse |
 | LLM / Embedding | Ollama (bge-m3 + qwen3:8b) |
 | Package management | uv (backend) + npm (frontend) |
+
+## Workflows
+
+### Offline Batch Embedding Pipeline
+
+Prepares vector indexes from structured data so the online agent can perform semantic search.
+
+```mermaid
+flowchart TD
+    CLI["<b>CLI Entry</b><br/>scripts/run_embedding.py --all"]
+
+    CLI --> TM["<b>Table Metadata</b><br/>6 tables from ORM"]
+    CLI --> PE["<b>Products Embedding</b><br/>LangGraph pipeline"]
+    CLI --> RE["<b>Reviews Embedding</b><br/>LangGraph pipeline"]
+
+    subgraph Table Metadata
+        TM --> TM_DDL["Generate DDL from<br/>SQLAlchemy ORM"]
+        TM_DDL --> TM_EMB["Embed table descriptions<br/>(Ollama bge-m3)"]
+        TM_EMB --> TM_MIL["Upsert to Milvus<br/>table_metadata"]
+    end
+
+    subgraph Products / Reviews Batch Loop
+        PE --> COUNT["Count rows in<br/>PostgreSQL"]
+        RE --> COUNT
+        COUNT --> EXTRACT["<b>extract</b><br/>Read chunk<br/>(OFFSET / LIMIT)"]
+        EXTRACT --> CHK{Checkpoint<br/>already done?}
+        CHK -->|Yes| SKIP["Skip chunk"]
+        CHK -->|No| EMBED["<b>embed &amp; write</b><br/>Embed via Ollama<br/>→ upsert to Milvus"]
+        EMBED --> MARK["Mark chunk done<br/>in Redis"]
+        SKIP --> ADVANCE
+        MARK --> ADVANCE["<b>advance</b><br/>chunk_index++"]
+        ADVANCE --> MORE{More chunks?}
+        MORE -->|Yes| EXTRACT
+        MORE -->|No| REPORT["<b>report</b><br/>Print summary"]
+    end
+
+    style CLI fill:#1a56db,color:#fff
+    style TM_MIL fill:#7c3aed,color:#fff
+    style REPORT fill:#059669,color:#fff
+```
+
+**Key details:**
+- **Table metadata**: Reads ORM definitions → generates DDL → embeds descriptions → upserts 6 records into `table_metadata` collection. Used at query time for NL2SQL table discovery.
+- **Products / Reviews**: LangGraph `StateGraph` loops over chunks. Each chunk: read from PostgreSQL → embed batch via Ollama (`bge-m3`) → upsert to Milvus → mark chunk complete in Redis (enables resume on failure).
+- **Checkpointing**: Redis stores completed chunk indices per collection + model version. Re-running skips already-processed chunks.
+
+### Online Query Agent Workflow
+
+Handles real-time user queries by combining SQL analytics and RAG.
+
+```mermaid
+flowchart TD
+    USER["👤 User query<br/><i>'退货率最高的10个SKU，分析原因'</i>"]
+    API["FastAPI<br/>POST /query"]
+
+    USER --> API
+    API --> IR["<b>Intent Router</b><br/>LLM classifies intent<br/>(nl2sql / rag / hybrid)"]
+
+    IR -->|nl2sql| N2S
+    IR -->|rag| RAG
+    IR -->|hybrid| N2S
+
+    subgraph NL2SQL Pipeline
+        N2S["<b>NL2SQL Node</b>"]
+        N2S --> TD["<b>Table Discovery</b><br/>Embed query → search<br/>Milvus table_metadata"]
+        TD --> DDL["Load DDL for<br/>discovered tables"]
+        DDL --> GEN["<b>SQL Generation</b><br/>LLM generates SQL<br/>from query + DDL"]
+        GEN --> EXEC["Execute SQL on<br/>PostgreSQL"]
+        EXEC --> SQL_RES["SQL result rows<br/>(e.g. top SKUs)"]
+    end
+
+    SQL_RES -->|hybrid| RAG
+    SQL_RES -->|nl2sql only| SYNTH
+
+    subgraph RAG Pipeline
+        RAG["<b>RAG Node</b>"]
+        RAG --> FILTER["Build metadata filters<br/>from NL2SQL SKUs"]
+        FILTER --> STRAT_A{"LlamaIndex<br/>search"}
+        STRAT_A -->|Success| RERANK["LLMRerank<br/>(top 5)"]
+        STRAT_A -->|Fallback| STRAT_B["pymilvus<br/>direct search"]
+        STRAT_B --> RERANK
+        RERANK --> RAG_CTX["RAG context<br/>(review insights)"]
+    end
+
+    RAG_CTX --> SYNTH
+
+    subgraph Synthesize
+        SYNTH["<b>Synthesize Node</b>"]
+        SYNTH --> LLM["LLM combines<br/>SQL data + RAG context<br/>→ final analysis"]
+        LLM --> ANSWER["Structured answer<br/>with insights"]
+    end
+
+    ANSWER --> API
+    API --> USER
+
+    style USER fill:#1a56db,color:#fff
+    style IR fill:#f59e0b,color:#000
+    style N2S fill:#2563eb,color:#fff
+    style RAG fill:#7c3aed,color:#fff
+    style SYNTH fill:#059669,color:#fff
+    style ANSWER fill:#059669,color:#fff
+```
+
+**Routing logic:**
+- **nl2sql**: Intent Router → NL2SQL → Synthesize → END
+- **rag**: Intent Router → RAG → Synthesize → END
+- **hybrid**: Intent Router → NL2SQL → RAG (with SKU filters from SQL results) → Synthesize → END
+
+**Key details:**
+- **Intent Router**: Uses LLM with structured output (`function_calling`) to classify query intent and select relevant Milvus collections.
+- **Table Discovery**: Embeds the user query → searches `table_metadata` in Milvus → returns top-k relevant table names → loads their DDL for SQL generation.
+- **NL2SQL**: Generates PostgreSQL from natural language using the discovered table DDL as context. Only `SELECT` statements are executed.
+- **RAG**: Searches `ecommerce_products` and `reviews_sku` collections. Uses LlamaIndex with `LLMRerank` by default, falls back to pymilvus for complex filter expressions. In hybrid mode, SKUs from NL2SQL results are passed as metadata filters to narrow review search.
+- **Synthesize**: LLM merges structured SQL results with unstructured RAG context into a cohesive analysis.
+- **Observability**: Every node is traced via Langfuse (`@observe` decorator), capturing LLM calls, token usage, and graph execution flow.
 
 ## License
 
