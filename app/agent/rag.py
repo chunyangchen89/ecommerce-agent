@@ -16,7 +16,7 @@ from app.embedding.client import embed_texts
 logger = logging.getLogger(__name__)
 
 
-# Configure LlamaIndex to use Ollama
+# Configure LlamaIndex to use Ollama embeddings
 LISettings.embed_model = OpenAIEmbedding(
     model_name=settings.OLLAMA_EMBED_MODEL,
     api_base=settings.OLLAMA_BASE_URL,
@@ -25,7 +25,7 @@ LISettings.embed_model = OpenAIEmbedding(
 )
 
 _reranker_llm = LlamaOpenAI(
-    model=settings.OLLAMA_LLM_MODEL,
+    model_name=settings.OLLAMA_LLM_MODEL,
     api_base=settings.OLLAMA_BASE_URL,
     api_key="ollama",
     temperature=0.0,
@@ -38,6 +38,7 @@ def _llamaindex_search(collection_name: str, query: str, filters: MetadataFilter
         collection_name=collection_name,
         dim=settings.OLLAMA_EMBED_DIM,
         text_key="text",
+        embedding_field="vector",
         overwrite=False,
     )
     index = VectorStoreIndex.from_vector_store(vector_store)
@@ -57,18 +58,30 @@ def _llamaindex_search(collection_name: str, query: str, filters: MetadataFilter
             "- [%.4f] %s | %s" % (
                 node.score,
                 meta.get("title", meta.get("sku", "")),
-                str(meta.get("review_text", meta.get("text", "")))[:200],
+                str(meta.get("text", ""))[:200],
             )
         )
     return results
+
+
+def _get_scalar_fields(client: MilvusClient, collection_name: str) -> list[str]:
+    """Introspect collection schema, return non-vector, non-primary field names."""
+    info = client.describe_collection(collection_name)
+    return [
+        f["name"] for f in info["fields"]
+        if not f.get("is_primary") and f["type"] != "FloatVector"
+    ]
 
 
 def _pymilvus_search(collection_name: str, query: str, filter_expr: str = "", top_k: int = 10) -> list[str]:
     client = MilvusClient(uri=settings.MILVUS_URI)
     client.load_collection(collection_name)
 
+    output_fields = _get_scalar_fields(client, collection_name)
+
     vecs = embed_texts([query])
     if not vecs:
+        client.close()
         return []
 
     results = client.search(
@@ -76,23 +89,19 @@ def _pymilvus_search(collection_name: str, query: str, filter_expr: str = "", to
         data=[vecs[0]],
         filter=filter_expr,
         limit=top_k,
-        output_fields=["text", "title", "sku", "rating", "review_text", "category", "brand"],
+        output_fields=output_fields,
         search_params={"metric_type": "COSINE", "params": {"ef": 128}},
     )
 
-    output = []
+    formatted = []
     if results and results[0]:
         for hit in results[0]:
             e = hit["entity"]
-            output.append(
-                "- [%.4f] %s | %s" % (
-                    hit["distance"],
-                    e.get("title", e.get("sku", "")),
-                    str(e.get("review_text", e.get("text", "")))[:200],
-                )
-            )
+            label = e.get("title") or e.get("sku", "")
+            body = str(e.get("text", ""))[:200]
+            formatted.append("- [%.4f] %s | %s" % (hit["distance"], label, body))
     client.close()
-    return output
+    return formatted
 
 
 @observe(name="rag")
