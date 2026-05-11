@@ -54,11 +54,15 @@ def _llamaindex_search(collection_name: str, query: str, filters: MetadataFilter
     results = []
     for node in nodes:
         meta = node.metadata
+        content = node.text or node.get_content() or ""
+        label = meta.get("title", meta.get("sku", ""))
+        if not label and content:
+            label = content.split("\n")[0][:60]
         results.append(
             "- [%.4f] %s | %s" % (
                 node.score,
-                meta.get("title", meta.get("sku", "")),
-                str(meta.get("text", ""))[:200],
+                label,
+                content[:200],
             )
         )
     return results
