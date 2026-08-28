@@ -6,7 +6,7 @@ Enterprise ecommerce data agent — query business data in natural language, get
 
 ### 1. Landing Page
 
-The agent's web UI provides a clean search interface for natural language queries and a document upload area for future embedding.
+The agent's web UI provides a clean search interface for natural language queries.
 
 ![Landing Page](screenshots/01_landing_page.png)
 
@@ -41,11 +41,11 @@ The agent combines SQL data and RAG insights into a comprehensive analysis — c
 - [Docker](https://docs.docker.com/get-docker/) + Docker Compose
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [Node.js](https://nodejs.org/) 18+ (for frontend)
-- [Ollama](https://ollama.ai/) with models pulled:
+- [Ollama](https://ollama.ai/) with the embedding model pulled:
   ```bash
   ollama pull bge-m3
-  ollama pull qwen3:8b
   ```
+- An API key for the hosted `deepseek/deepseek-v3.2` chat model
 
 ### 1. Start infrastructure
 
@@ -58,7 +58,7 @@ This starts PostgreSQL, Milvus (with etcd + minio), Redis, and Langfuse.
 ### 2. Generate simulated data
 
 ```bash
-cp .env_example .env   # edit if needed
+cp .env_example .env   # add your LLM_API_KEY
 uv sync
 uv run python scripts/generate_data.py
 ```
@@ -108,7 +108,7 @@ curl -X POST http://localhost:8000/query \
 | Attu | 3001 | Milvus GUI |
 | Redis | 6379 | Checkpoint / cache |
 | Langfuse | 3000 | Observability dashboard |
-| Ollama | 11434 | Local LLM + embeddings |
+| Ollama | 11434 | Local embeddings |
 
 ## Verifying Data
 
@@ -196,9 +196,9 @@ app/                        # Python backend
 frontend/                   # Next.js frontend
 ├── src/
 │   ├── app/                # Next.js App Router pages
-│   ├── components/         # UI components (layout, query, results, upload)
+│   ├── components/         # UI components (layout, query, results)
 │   ├── lib/                # API client, types, utilities
-│   └── hooks/              # React hooks (query, health, file upload)
+│   └── hooks/              # React hooks (query and health)
 └── .env.local              # Frontend environment config
 
 scripts/                    # CLI entry points
@@ -216,7 +216,8 @@ scripts/                    # CLI entry points
 | Vector DB | Milvus |
 | Checkpoint / cache | Redis |
 | Observability | Langfuse |
-| LLM / Embedding | Ollama (bge-m3 + qwen3:8b) |
+| LLM | Hosted DeepSeek (`deepseek/deepseek-v3.2`) |
+| Embedding | Ollama (`bge-m3`) |
 | Package management | uv (backend) + npm (frontend) |
 
 ## Workflows

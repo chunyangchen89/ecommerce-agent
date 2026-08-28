@@ -25,9 +25,9 @@ INTENT_PROMPT = """你是一个查询分类器。根据用户问题判断查询�
 
 _structured_llm = (
     ChatOpenAI(
-        base_url=settings.OLLAMA_BASE_URL,
-        api_key="ollama",
-        model=settings.OLLAMA_LLM_MODEL,
+        base_url=settings.LLM_BASE_URL,
+        api_key=settings.LLM_API_KEY,
+        model=settings.LLM_MODEL,
         temperature=0,
     )
     .with_structured_output(IntentResponse, method="function_calling")

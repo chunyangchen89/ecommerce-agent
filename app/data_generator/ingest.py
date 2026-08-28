@@ -64,9 +64,13 @@ async def run_data_generation(
         logger.info(f"Inserted {len(order_rows)} orders")
 
         # returns — link to order IDs
-        returned_orders = [o for o in orders if o["status"] == "returned"]
-        for i, ret in enumerate(returns_data):
-            ret["order_id"] = order_rows[i]
+        returned_order_ids = [
+            order_id
+            for order, order_id in zip(orders, order_rows)
+            if order["status"] == "returned"
+        ]
+        for ret, order_id in zip(returns_data, returned_order_ids):
+            ret["order_id"] = order_id
         await conn.execute(
             text("""
                 INSERT INTO returns (sku, order_id, return_date, reason, refund_amount)

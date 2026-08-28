@@ -45,10 +45,10 @@ def table_discovery(query: str, top_k: int = 3) -> list[str]:
 
 @observe(name="sql_generation", as_type="generation")
 def generate_sql(query: str, ddl: str) -> str:
-    client = OpenAI(base_url=settings.OLLAMA_BASE_URL, api_key="ollama")
+    client = OpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY)
     prompt = SQL_PROMPT.format(ddl=ddl, query=query)
     resp = client.chat.completions.create(
-        model=settings.OLLAMA_LLM_MODEL,
+        model=settings.LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
     )

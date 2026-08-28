@@ -2,11 +2,15 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Ollama
+    # Hosted chat model
+    LLM_BASE_URL: str = "https://api.ofox.io/v1"
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = "deepseek/deepseek-v3.2"
+
+    # Local Ollama embeddings
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
     OLLAMA_EMBED_MODEL: str = "bge-m3"
     OLLAMA_EMBED_DIM: int = 1024
-    OLLAMA_LLM_MODEL: str = "qwen3:8b"
 
     # PostgreSQL
     POSTGRES_DSN: str = "postgresql+asyncpg://ecommerce:ecommerce@localhost:5432/ecommerce"

@@ -114,6 +114,12 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       TELEMETRY_ENABLED: "false"
       LANGFUSE_LOG_LEVEL: info
+      LANGFUSE_INIT_ORG_ID: ecommerce
+      LANGFUSE_INIT_ORG_NAME: Ecommerce Agent
+      LANGFUSE_INIT_PROJECT_ID: ecommerce-agent
+      LANGFUSE_INIT_PROJECT_NAME: Ecommerce Agent
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy

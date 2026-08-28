@@ -85,8 +85,7 @@ async def health():
 
     if is_langfuse_configured():
         try:
-            langfuse_context.auth_check()
-            langfuse_ok = True
+            langfuse_ok = bool(langfuse_context.auth_check())
         except Exception:
             pass
 

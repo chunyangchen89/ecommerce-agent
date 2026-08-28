@@ -25,9 +25,9 @@ LISettings.embed_model = OpenAIEmbedding(
 )
 
 _reranker_llm = LlamaOpenAI(
-    model_name=settings.OLLAMA_LLM_MODEL,
-    api_base=settings.OLLAMA_BASE_URL,
-    api_key="ollama",
+    model_name=settings.LLM_MODEL,
+    api_base=settings.LLM_BASE_URL,
+    api_key=settings.LLM_API_KEY,
     temperature=0.0,
 )
 

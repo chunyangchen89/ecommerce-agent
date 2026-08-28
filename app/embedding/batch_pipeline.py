@@ -192,7 +192,9 @@ def route_after_extract(state: BatchState) -> str:
 
 
 def route_next_node(state: BatchState) -> str:
-    if state["chunk_index"] + 1 < state["total_chunks"]:
+    # ``advance_chunk_node`` has already incremented the index. Continue while
+    # that new index still points at a real chunk, including the final one.
+    if state["chunk_index"] < state["total_chunks"]:
         return "next_chunk"
     return "done"
 

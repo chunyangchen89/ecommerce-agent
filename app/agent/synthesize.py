@@ -43,7 +43,7 @@ def _format_rows_as_table(rows: list[dict]) -> str:
 
 @observe(name="synthesize", as_type="generation")
 def synthesize_node(state: AgentState) -> dict:
-    client = OpenAI(base_url=settings.OLLAMA_BASE_URL, api_key="ollama")
+    client = OpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY)
     prompt = SYNTHESIZE_PROMPT.format(
         sql_result=_format_rows_as_table(state.get("sql_result") or []),
         rag_context=state.get("rag_context") or "无评价数据",
@@ -51,7 +51,7 @@ def synthesize_node(state: AgentState) -> dict:
     )
 
     resp = client.chat.completions.create(
-        model=settings.OLLAMA_LLM_MODEL,
+        model=settings.LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )

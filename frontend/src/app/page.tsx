@@ -3,7 +3,6 @@
 import { SearchBar } from "@/components/query/search-bar";
 import { QueryLoading } from "@/components/query/query-loading";
 import { ResultsPanel } from "@/components/results/results-panel";
-import { DocumentUpload } from "@/components/upload/document-upload";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQueryAgent } from "@/hooks/use-query-agent";
 
@@ -38,10 +37,6 @@ export default function Home() {
         )}
 
         {data && <ResultsPanel data={data} />}
-
-        <section className="mx-auto mt-12 mb-16 max-w-3xl">
-          <DocumentUpload />
-        </section>
       </div>
     </main>
   );
